@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Computação Gráfica - Slides & Projeto WebGL</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #090d16;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    }
+
+    /* Barra Superior Discreta de Alternância */
+    #top-nav {
+      position: fixed;
+      top: 12px;
+      right: 18px;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(17, 24, 39, 0.88);
+      backdrop-filter: blur(8px);
+      padding: 5px 8px;
+      border-radius: 30px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-toggle-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .nav-toggle-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-toggle-btn.active {
+      background: #38bdf8;
+      color: #04101e;
+      font-weight: 700;
+    }
+
+    .nav-shortcut {
+      font-size: 0.75rem;
+      opacity: 0.75;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Oculta automaticamente o seletor quando a tela inteira é ativada */
+    :fullscreen #top-nav,
+    :-webkit-full-screen #top-nav,
+    body.is-fullscreen #top-nav {
+      display: none !important;
+    }
+
+    /* Containers de Conteúdo em Tela Cheia */
+    .view-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: none;
+    }
+
+    .view-frame.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Flutuante Discreto: Alterna entre Slides e Projeto (Some em Tela Cheia) -->
+  <nav id="top-nav">
+    <button class="nav-toggle-btn active" id="btn-slides" onclick="switchView('slides')">
+      <span>Slides da Apresentação</span>
+      <span class="nav-shortcut">1</span>
+    </button>
+    <button class="nav-toggle-btn" id="btn-project" onclick="switchView('project')">
+      <span>Projeto Interativo (WebGL)</span>
+      <span class="nav-shortcut">2</span>
+    </button>
+  </nav>
+
+  <!-- Frame 1: Slides da Apresentação -->
+  <iframe id="frame-slides" class="view-frame active" src="slides/index.html"></iframe>
+
+  <!-- Frame 2: Demonstração Interativa do Projeto (WebGL) -->
+  <iframe id="frame-project" class="view-frame" src="demo_webgl/index.html"></iframe>
+
+  <script>
+    function switchView(view) {
+      const btnSlides = document.getElementById('btn-slides');
+      const btnProject = document.getElementById('btn-project');
+      const frameSlides = document.getElementById('frame-slides');
+      const frameProject = document.getElementById('frame-project');
+
+      if (view === 'slides') {
+        btnSlides.classList.add('active');
+        btnProject.classList.remove('active');
+        frameSlides.classList.add('active');
+        frameProject.classList.remove('active');
+        frameSlides.contentWindow.focus();
+      } else {
+        btnProject.classList.add('active');
+        btnSlides.classList.remove('active');
+        frameProject.classList.add('active');
+        frameSlides.classList.remove('active');
+        frameProject.contentWindow.focus();
+      }
+    }
+
+    function toggleFS() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    window.switchView = switchView;
+    window.toggleFS = toggleFS;
+
+    document.addEventListener('fullscreenchange', () => {
+      document.body.classList.toggle('is-fullscreen', !!document.fullscreenElement);
+    });
+
+    // Vincula teclas aos iframes para alternância imediata em qualquer foco
+    function hookIframeKeys(frame) {
+      try {
+        frame.contentWindow.addEventListener('keydown', (e) => {
+          if (e.key === '1') {
+            e.preventDefault();
+            switchView('slides');
+          } else if (e.key === '2') {
+            e.preventDefault();
+            switchView('project');
+          } else if (e.key === 'f' || e.key === 'F') {
+            toggleFS();
+          }
+        });
+      } catch (err) {}
+    }
+
+    document.getElementById('frame-slides').addEventListener('load', function() { hookIframeKeys(this); });
+    document.getElementById('frame-project').addEventListener('load', function() { hookIframeKeys(this); });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === '1') {
+        switchView('slides');
+      } else if (e.key === '2') {
+        switchView('project');
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFS();
+      }
+    });
+  </script>
+</body>
+</html>
