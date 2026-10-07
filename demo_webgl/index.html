@@ -4,15 +4,21 @@
 		<meta charset="utf-8">
 		<title>WebGL GPU Friendly Laplacian Texture Blending and Tiling</title>
 		<style>
-			body { margin: 0; }
+			body { margin: 0; overflow: hidden; }
 			#info {
 				position: absolute;
-				color:white;
+				color: white;
 				bottom: 10px;
-				width: 100%;
-				text-align: left;
+				left: 15px;
 				z-index: 100;
-				display:block;
+				display: block;
+			}
+			/* Posiciona o painel lil-gui no canto inferior direito */
+			.lil-gui.root {
+				top: auto !important;
+				bottom: 18px !important;
+				right: 18px !important;
+				max-height: 85vh;
 			}
 		</style>
 	</head>
@@ -26,7 +32,20 @@
                 }
             }
         </script>        
-		<script type="module" src="main.js">
+		<script type="module" src="main.js"></script>
+		<script>
+			// Atalhos de teclado sincronizados com o container principal
+			window.addEventListener('keydown', (e) => {
+				if (window.parent && window.parent !== window) {
+					if (e.key === '1' && window.parent.switchView) {
+						window.parent.switchView('slides');
+					} else if (e.key === '2' && window.parent.switchView) {
+						window.parent.switchView('project');
+					} else if ((e.key === 'f' || e.key === 'F') && window.parent.toggleFS) {
+						window.parent.toggleFS();
+					}
+				}
+			});
 		</script>
 	</body>
 </html>
