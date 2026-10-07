@@ -83,7 +83,8 @@ Utilizado para gerar comparativos lado a lado e mensurar a preservação de vari
 - **Baseline:** Linear Texture Blending tradicional ponderado por máscara (lerp pontual).
 - **Proposta Central de Investigação:** Avaliar o impacto de otimizações e variações no pipeline de amostragem de mipmaps:
   1. *Level Skipping:* Omissão de níveis alternados da pirâmide Laplaciana para reduzir a saturação de amostragem de textura na GPU, mensurando a degradação perceptual (SSIM/PSNR) versus redução no tempo de renderização.
-  2. *Análise de Filtros de Reamostragem:* Comparação entre Box Filter e filtros de maior suporte (Lanczos/Bicúbico) e seu impacto no surgimento de artefatos de escurecimento (*over-darkening/ringing*).
+  2. *LOD-Adaptive Blending (Extensão 3D):* Seleção adaptativa da profundidade da pirâmide Laplaciana em tempo real via derivadas de tela (`dFdx`/`dFdy`), reduzindo em até 60–70% o tráfego de textura em fragmentos distantes da câmera.
+  3. *Análise de Filtros de Reamostragem:* Comparação entre Box Filter e filtros de maior suporte (Lanczos/Bicúbico) e seu impacto no surgimento de artefatos de escurecimento (*over-darkening/ringing*).
 - **Métricas:**
   - Preservação de variância local na zona de transição ($\text{Var}(I)$).
   - SSIM e PSNR contra a referência de 6 níveis completos.
