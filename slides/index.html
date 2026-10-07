@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPU-Friendly Laplacian Texture Blending - Checkpoint 1</title>
+  <style>
+    :root {
+      --bg-dark: #0a0f1d;
+      --bg-card: rgba(18, 26, 47, 0.85);
+      --border-card: rgba(56, 189, 248, 0.2);
+      --accent-blue: #38bdf8;
+      --accent-green: #10b981;
+      --accent-purple: #a855f7;
+      --accent-amber: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #030712;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Barra Superior de Progresso */
+    #progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      z-index: 1000;
+    }
+
+    #progress-bar {
+      height: 100%;
+      width: 10%;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+      transition: width 0.3s ease;
+    }
+
+    /* Container Principal de Slides */
+    #deck {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 3.5rem 5rem 5rem 5rem;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(30px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+
+    /* Tipografia de Cabeçalho */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.8rem;
+      width: fit-content;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge.green {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-green);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .badge.purple {
+      background: rgba(168, 85, 247, 0.12);
+      color: var(--accent-purple);
+      border-color: rgba(168, 85, 247, 0.3);
+    }
+
+    .badge.amber {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-amber);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 0.6rem;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 1.8rem;
+      max-width: 900px;
+      line-height: 1.5;
+    }
+
+    /* Layout Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8rem;
+      align-items: stretch;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+
+    /* Cartões / Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      position: relative;
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      color: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card p, .card li {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    .card ul {
+      padding-left: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    /* Destaques em Texto */
+    .highlight {
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .highlight-green {
+      color: var(--accent-green);
+      font-weight: 600;
+    }
+
+    .highlight-amber {
+      color: var(--accent-amber);
+      font-weight: 600;
+    }
+
+    /* Slide 1 - Capa Específica */
+    .hero-title {
+      font-size: 3.4rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #38bdf8 0%, #ffffff 50%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .meta-box {
+      margin-top: 2rem;
+      display: flex;
+      gap: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .meta-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    /* Código Interativo (Slide 4) */
+    .code-container {
+      background: var(--code-bg);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 1.2rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      max-height: 380px;
+      color: #e2e8f0;
+    }
+
+    .code-line {
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.15s ease;
+    }
+
+    .code-line:hover, .code-line.active {
+      background: rgba(56, 189, 248, 0.2);
+    }
+
+    .code-comment { color: #64748b; }
+    .code-keyword { color: #f43f5e; font-weight: 600; }
+    .code-type { color: #38bdf8; }
+    .code-func { color: #a855f7; }
+    .code-num { color: #f59e0b; }
+
+    /* Comparador de Imagens Interativo (Slide 8) */
+    .interactive-viewer {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+      width: 100%;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 0.8rem;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 0.4rem;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.4rem 1.2rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .view-btn.active {
+      background: var(--accent-blue);
+      color: #04101e;
+    }
+
+    .image-frame {
+      position: relative;
+      width: 100%;
+      height: 340px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-frame img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: opacity 0.3s ease;
+    }
+
+    .img-label {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Barra Inferior de Navegação */
+    #nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 52px;
+      background: rgba(10, 15, 29, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2rem;
+      z-index: 1000;
+    }
+
+    .nav-info {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      padding: 0.35rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: background 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .kbd {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Progresso Superior -->
+  <div id="progress-container">
+    <div id="progress-bar"></div>
+  </div>
+
+  <div id="deck">
+
+    <!-- SLIDE 1: Capa -->
+    <section class="slide active" id="slide-1">
+      <div class="badge green">Checkpoint 1 • Apresentação da Ideia</div>
+      <h1 class="hero-title">GPU-Friendly Laplacian<br>Texture Blending</h1>
+      <p class="subtitle">
+        Investigação técnica e avaliação experimental de mesclagem piramidal de texturas em tempo real sem pré-computação.
+      </p>
+
+      <div class="meta-box">
+        <div class="meta-item">
+          <span class="meta-label">Artigo de Referência</span>
+          <span class="meta-value">Bartlomiej Wronski (NVIDIA / JCGT 2025)</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Área Temática</span>
+          <span class="meta-value">Área 3 – Antialiasing, Texturas e Aparência</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Disciplina</span>
+          <span class="meta-value">Computação Gráfica (2026/2) – IFNMG</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Orientador</span>
+          <span class="meta-value">Prof. Wagner Ferreira de Barros</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: O Problema (Pergunta 1) -->
+    <section class="slide" id="slide-2">
+      <div class="badge">Pergunta 1 • O Problema e o Artigo</div>
+      <h2>O Dilema da Mesclagem de Texturas em Tempo Real</h2>
+      <p class="subtitle">
+        Misturar texturas e materiais procedurais via interpolação linear pontual (lerp) impõe um trade-off crítico de aparência.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Transição Estreita (Narrow Blend)</h3>
+          <ul>
+            <li>Gera <span class="highlight">costuras visíveis (seams)</span> e descontinuidades bruscas.</li>
+            <li>Destrói a naturalidade do terreno ou material composto.</li>
+            <li>Fácil de calcular, mas esteticamente inaceitável em jogos modernos.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Transição Ampla (Wide Blend)</h3>
+          <ul>
+            <li>Provoca <span class="highlight-amber">perda severa de contraste</span> e desfoque espectral.</li>
+            <li>Gera o indesejado <span class="highlight-amber">efeito fantasma (ghosting)</span>: estruturas de ambas as texturas se sobrepõem nebulosamente.</li>
+            <li>Em mapas de normais, achata os detalhes contra a normal apontando para cima (0, 0, 1).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1.2rem; border-color: rgba(244, 63, 94, 0.3);">
+        <p style="font-size: 0.9rem;">
+          <strong>Por que soluções anteriores falham no tempo real?</strong> Abordagens como Transporte Ótimo de Histogramas (Heitz & Neyret) ou Solvers de Poisson exigem pré-computações offline pesadas ou grande consumo de memória, inviabilizando materiais dinâmicos gerados proceduralmente (*uber-materials*).
+        </p>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: Contribuição Central (Pergunta 2) -->
+    <section class="slide" id="slide-3">
+      <div class="badge purple">Pergunta 2 • Contribuição Principal</div>
+      <h2>Decomposição Laplaciana via Hardware Mipmaps</h2>
+      <p class="subtitle">
+        A proposta combina a teoria de pirâmides Laplacianas de Burt & Adelson com os recursos nativos das GPUs modernas.
+      </p>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. Sem Memória Extra</h3>
+          <p>
+            Reutiliza a cadeia de <span class="highlight">mipmaps convencionais</span> (já presente em qualquer textura para filtragem trilinear).
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Zero estruturas de dados personalizadas ou tabelas LUTs adicionais.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>2. Laplaciano On-the-Fly</h3>
+          <p>
+            Aproximação via <em>Difference of Gaussians</em> (DoG):
+          </p>
+          <p style="font-family: monospace; font-size: 0.85rem; color: var(--accent-green); background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px;">
+            L_k ≈ Mip[k] - Mip[k+1]
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Cada nível Laplaciano captura uma faixa de frequência espacial específica.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>3. Blending Adaptativo</h3>
+          <p>
+            Altas frequências (detalhes nítidos) mesclam com <span class="highlight">raio estreito</span>; baixas frequências (cores médias) com <span class="highlight-amber">raio amplo</span>.
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Resultado: Transição suave e contínua sem perder nitidez ou gerar ghosting.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: O Algoritmo no Shader -->
+    <section class="slide" id="slide-4">
+      <div class="badge green">Implementação • Fragment Shader</div>
+      <h2>O Algoritmo em ~15 Linhas de GLSL (Listing 1)</h2>
+      <p class="subtitle">
+        Toda a reconstrução matemática é executada diretamente no pixel shader com apenas alguns texture taps adicionais.
+      </p>
+
+      <div class="grid-2">
+        <div class="code-container">
+<span class="code-keyword">#define</span> NUM_LEVELS <span class="code-num">4</span>
+<span class="code-type">vec4</span> tex0_levels[NUM_LEVELS+1], tex1_levels[NUM_LEVELS+1], mask_levels[NUM_LEVELS+1];
+
+<span class="code-comment">// 1. Amostragem dos Mipmaps (Hardware Bilinear Upsampling)</span>
+<span class="code-keyword">for</span> (<span class="code-type">int</span> i = <span class="code-num">0</span>; i &lt;= NUM_LEVELS; i++) {
+    tex0_levels[i] = <span class="code-func">texture2D</span>(tex0, uv, <span class="code-type">float</span>(i));
+    tex1_levels[i] = <span class="code-func">texture2D</span>(tex1, uv, <span class="code-type">float</span>(i));
+    mask_levels[i] = <span class="code-func">texture2D</span>(mask, uv, <span class="code-type">float</span>(i));
+}
+
+<span class="code-type">vec4</span> blended = <span class="code-type">vec4</span>(<span class="code-num">0.0</span>);
+
+<span class="code-comment">// 2. Acúmulo das Bandas Laplacianas (DoG)</span>
+<span class="code-keyword">for</span> (<span class="code-type">int</span> i = <span class="code-num">0</span>; i &lt; NUM_LEVELS; i++) {
+    <span class="code-type">vec4</span> l0 = tex0_levels[i] - tex0_levels[i+1];
+    <span class="code-type">vec4</span> l1 = tex1_levels[i] - tex1_levels[i+1];
+    blended += l0 * (<span class="code-num">1.0</span> - mask_levels[i]) + l1 * mask_levels[i];
+}
+
+<span class="code-comment">// 3. Adição do Resíduo Gaussiano Coarse</span>
+blended += tex0_levels[NUM_LEVELS] * (<span class="code-num">1.0</span> - mask_levels[NUM_LEVELS]) + 
+           tex1_levels[NUM_LEVELS] * mask_levels[NUM_LEVELS];
+        </div>
+
+        <div class="card" style="justify-content: center;">
+          <h3>Eficiência de Execução</h3>
+          <p>
+            • <strong>Custo de Memória:</strong> Nulo (usa os mips da filtragem trilinear).<br>
+            • <strong>Custo Aritmético:</strong> Apenas multiply-accumulates (MADs).<br>
+            • <strong>Cache da GPU:</strong> Leituras de mips inferiores (resoluções menores) ficam cacheadas com facilidade nas memórias L1/L2 da GPU.
+          </p>
+          <div style="background: rgba(16, 185, 129, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--accent-green); margin-top: 0.5rem;">
+            <p style="font-size: 0.85rem; color: #a7f3d0;">
+              Overhead medido no artigo (4K em RTX 4090): <strong>apenas ~0.08 ms</strong> com 4 níveis Laplacianos.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: Oportunidade Investigativa (Pergunta 3) -->
+    <section class="slide" id="slide-5">
+      <div class="badge amber">Pergunta 3 • Limitação e Oportunidade</div>
+      <h2>Limitação Identificada & Oportunidade de Pesquisa</h2>
+      <p class="subtitle">
+        Embora eficiente, a técnica introduz novas características que merecem investigação sistemática.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="badge amber" style="margin: 0;">Limitação Aberta no Artigo</div>
+          <h3>Saturação de Amostragem (Texture Fetches)</h3>
+          <p>
+            O método requer <span class="highlight-amber">N + 1 amostragens</span> de textura. Em materiais PBR modernos com múltiplos canais (Albedo, Normal, Roughness, Metálico, AO), a quantidade de leituras por fragmento pode saturar as Unidades de Mapeamento de Textura (TMUs), especialmente em hardwares modestos ou móveis.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="badge green" style="margin: 0;">Oportunidade A (Seção 6.2)</div>
+          <h3>Level Skipping & Otimização de Bandas</h3>
+          <p>
+            O autor sugere sucintamente que é possível pular níveis alternados da pirâmide:
+          </p>
+          <p style="font-family: monospace; font-size: 0.85rem; color: var(--accent-blue); background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px;">
+            L_k ≈ Mip[k] - Mip[k+2]
+          </p>
+          <p>
+            Isso reduz as leituras para <strong>(N/2) + 1 amostras</strong>, mas o artigo não fornece um estudo detalhado do impacto quantitativo na qualidade visual.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Proposta da Equipe (Pergunta 4) -->
+    <section class="slide" id="slide-6">
+      <div class="badge blue">Pergunta 4 • Proposta de Investigação</div>
+      <h2>Proposta da Equipe & Pergunta de Pesquisa</h2>
+      <p class="subtitle">
+        Investigar o compromisso entre desempenho de GPU e fidelidade visual com técnicas de Level Skipping e filtros de reconstrução.
+      </p>
+
+      <div class="card" style="border-left: 4px solid var(--accent-blue); margin-bottom: 1.2rem;">
+        <p style="font-size: 1.15rem; color: #fff; font-weight: 500;">
+          “Qual é a relação quantitativa entre o ganho de taxa de amostragem (redução de texture taps) e a degradação de contraste e fidelidade perceptual (SSIM/PSNR) ao aplicar Level Skipping e diferentes políticas de filtragem de mipmaps?”
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Eixos de Experimentação</h3>
+          <ul>
+            <li><strong>Políticas de Níveis:</strong> Completo (4 e 6 níveis) vs. Level Skipping (pulos de 1 nível) vs. Níveis adaptativos baseados na distância da câmera (LOD).</li>
+            <li><strong>Filtros de Reamostragem:</strong> Box filter padrão (GPU bilinear) vs. Lanczos/Bicúbico (análise de artefatos de over-darkening).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Resultados Esperados</h3>
+          <ul>
+            <li>Curvas de Pareto relacionando Custo de Amostragem vs. SSIM/Variância.</li>
+            <li>Identificação de configurações ótimas (<em>sweet-spot</em>) para jogos e plataformas restritas sem perda perceptual perceptível.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Metodologia e Baseline (Perguntas 5 e 6) -->
+    <section class="slide" id="slide-7">
+      <div class="badge purple">Perguntas 5 e 6 • Baseline e Avaliação</div>
+      <h2>Baseline de Comparação & Metodologia Experimental</h2>
+      <p class="subtitle">
+        Critérios rigorosos e reprodutíveis para validação visual e quantitativa dos resultados.
+      </p>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. Baselines</h3>
+          <p>
+            • <strong>Linear Blend Estreito:</strong> Transição dura (exibe costuras).<br>
+            • <strong>Linear Blend Suave:</strong> Transição ampla (exibe ghosting).<br>
+            • <strong>Laplacian 6 Níveis:</strong> Referência de máxima fidelidade do artigo.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>2. Casos de Teste</h3>
+          <p>
+            • <strong>Texturas Sintéticas e Ruídos:</strong> Padrões de alta frequência estocástica.<br>
+            • <strong>Fotografias de Terrenos:</strong> Grama, rochas e terra.<br>
+            • <strong>Mapas de Normais (Normal Maps):</strong> Superfícies PBR sob iluminação direta.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>3. Métricas Objetivas</h3>
+          <p>
+            • <strong>Variância Local na Borda:</strong> Mede preservação de contraste.<br>
+            • <strong>SSIM e PSNR:</strong> Fidelidade estrutural.<br>
+            • <strong>Tempo de Execução (ms):</strong> Custo de GPU e saturação de textura.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: Viabilidade Inicial (Pergunta 7) -->
+    <section class="slide" id="slide-8">
+      <div class="badge green">Pergunta 7 • Regra de Viabilidade Inicial</div>
+      <h2>Viabilidade Inicial Comprovada no Ambiente</h2>
+      <p class="subtitle">
+        A equipe já configurou o ambiente local e executou a baseline e o algoritmo do artigo com sucesso.
+      </p>
+
+      <div class="grid-2" style="align-items: center;">
+        <div class="interactive-viewer">
+          <div class="view-controls">
+            <button class="view-btn active" onclick="switchImage('comp')">Visão Completa</button>
+            <button class="view-btn" onclick="switchImage('linear')">Linear (Baseline)</button>
+            <button class="view-btn" onclick="switchImage('lap')">Laplacian (4 Níveis)</button>
+          </div>
+          <div class="image-frame">
+            <img id="viewer-img" src="../output/comparativo_completo.png" alt="Comparativo">
+            <span class="img-label" id="viewer-label">Painel 2x3: Fontes, Máscara, Blends e Diferença Residual</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Evidências Concluídas</h3>
+          <ul>
+            <li><span class="highlight-green">✓ Demonstração WebGL dos Autores:</span> Integrada na pasta <code>demo_webgl/</code>, executando em tempo real com Three.js e controle de GUI.</li>
+            <li><span class="highlight-green">✓ Pipeline Python Offline:</span> Implementado em <code>src/laplacian_blend.py</code>, calculando DoG em cadeias de mipmaps reais.</li>
+            <li><span class="highlight-green">✓ Métricas Calculadas:</span> Variância local na transição preservou <strong>98.5%</strong> do contraste original das texturas (eliminando ghosting).</li>
+            <li><span class="highlight-green">✓ Suporte a Mapas de Normais:</span> Validado em <code>output/normal_test/</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: Cronograma e Próximos Passos -->
+    <section class="slide" id="slide-9">
+      <div class="badge">Próximos Passos • Cronograma</div>
+      <h2>Planejamento das Próximas Entregas</h2>
+      <p class="subtitle">
+        Mapeamento das atividades para consolidação da pesquisa e checkpoints da disciplina.
+      </p>
+
+      <div class="grid-3">
+        <div class="card" style="border-top: 3px solid var(--accent-blue);">
+          <h3>Pós-Checkpoint 1</h3>
+          <p>
+            • Incorporação das observações do Prof. Wagner.<br>
+            • <strong>Cadastro no Cajuí</strong> como Projeto de Pesquisa oficial.<br>
+            • Refinamento da baseline de testes.
+          </p>
+        </div>
+
+        <div class="card" style="border-top: 3px solid var(--accent-purple);">
+          <h3>Checkpoint 2</h3>
+          <p>
+            • Implementação completa de Level Skipping e filtros alternativos.<br>
+            • Coleta sistemática de dados e métricas (SSIM, PSNR, ms).<br>
+            • Estrutura preliminar do artigo em LaTeX.
+          </p>
+        </div>
+
+        <div class="card" style="border-top: 3px solid var(--accent-green);">
+          <h3>Entrega Final</h3>
+          <p>
+            • Artigo final de 8 a 12 páginas em LaTeX.<br>
+            • Repositório GitHub 100% reproduzível.<br>
+            • Apresentação final com demonstração prática ao vivo.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: Conclusão -->
+    <section class="slide" id="slide-10">
+      <div class="badge green">Conclusão</div>
+      <h1 style="font-size: 3rem;">Obrigado!</h1>
+      <p class="subtitle">
+        O projeto apresenta sólida fundamentação teórica em computação gráfica, viabilidade técnica comprovada e clara relevância para motores de jogos e renderização em tempo real.
+      </p>
+
+      <div class="card" style="max-width: 650px; background: rgba(56, 189, 248, 0.05); border-color: rgba(56, 189, 248, 0.3);">
+        <h3>Resumo da Proposta</h3>
+        <p style="color: #e2e8f0;">
+          <strong>Artigo:</strong> GPU-Friendly Laplacian Texture Blending (Wronski, 2025)<br>
+          <strong>Investigação:</strong> Level Skipping e Análise de Filtros em Reconstrução de Mipmaps<br>
+          <strong>Status:</strong> Ambiente funcional e baseline validada<br>
+          <strong>Repositório:</strong> Estruturado com demo WebGL e pipeline Python
+        </p>
+      </div>
+
+      <p style="margin-top: 1.5rem; color: var(--accent-blue); font-weight: 600;">
+        Estamos abertos a perguntas e sugestões!
+      </p>
+    </section>
+
+  </div>
+
+  <!-- Barra de Navegação Inferior -->
+  <footer id="nav-bar">
+    <div class="nav-info">
+      <span>Slide <strong id="slide-counter">1</strong> de <strong id="slide-total">10</strong></span>
+      <span>•</span>
+      <span id="slide-topic">Capa</span>
+    </div>
+
+    <div class="nav-controls">
+      <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">
+        Navegue com <span class="kbd">←</span> <span class="kbd">→</span> ou <span class="kbd">Espaço</span>
+      </span>
+      <button class="nav-btn" onclick="prevSlide()">◀ Anterior</button>
+      <button class="nav-btn" onclick="nextSlide()">Próximo ▶</button>
+      <button class="nav-btn" onclick="toggleFullscreen()">⛶ Tela Cheia</button>
+    </div>
+  </footer>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+
+    const topics = [
+      "Apresentação do Tema",
+      "O Problema em Computação Gráfica",
+      "Contribuição do Artigo",
+      "O Algoritmo no Shader",
+      "Limitação e Oportunidade",
+      "Proposta da Equipe",
+      "Baseline e Metodologia",
+      "Viabilidade Inicial",
+      "Cronograma e Próximos Passos",
+      "Conclusão e Perguntas"
+    ];
+
+    function updateSlide() {
+      slides.forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === currentSlide);
+      });
+
+      // Atualiza contador e barra
+      document.getElementById('slide-counter').textContent = currentSlide + 1;
+      document.getElementById('slide-total').textContent = totalSlides;
+      document.getElementById('slide-topic').textContent = topics[currentSlide] || "";
+      
+      const progressPercent = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = progressPercent + '%';
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Teclado
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 'Home') {
+        currentSlide = 0;
+        updateSlide();
+      } else if (e.key === 'End') {
+        currentSlide = totalSlides - 1;
+        updateSlide();
+      }
+    });
+
+    // Alternador interativo de imagens no Slide 8
+    function switchImage(type) {
+      const img = document.getElementById('viewer-img');
+      const label = document.getElementById('viewer-label');
+      const buttons = document.querySelectorAll('.view-btn');
+
+      buttons.forEach(btn => btn.classList.remove('active'));
+
+      if (type === 'comp') {
+        img.src = '../output/comparativo_completo.png';
+        label.textContent = 'Painel 2x3: Fontes, Máscara, Blends e Diferença Residual';
+        buttons[0].classList.add('active');
+      } else if (type === 'linear') {
+        img.src = '../output/blend_linear_baseline.png';
+        label.textContent = 'Linear Blend (Baseline) - Perda de contraste visível na transição';
+        buttons[1].classList.add('active');
+      } else if (type === 'lap') {
+        img.src = '../output/blend_laplacian_4levels.png';
+        label.textContent = 'Laplacian Blend (4 Níveis) - Preservação nítida de altas frequências';
+        buttons[2].classList.add('active');
+      }
+    }
+
+    // Inicialização
+    updateSlide();
+  </script>
+</body>
+</html>
