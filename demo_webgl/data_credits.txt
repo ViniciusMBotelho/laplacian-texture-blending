@@ -1,0 +1,4 @@
+Textures 1.jpg and 2.jpg (and their 90 degree rotations) come from "Procedural Stochastic Textures by Tiling and Blending", Thomas Deliot and Eric Heitz in GPU Zen 2.
+https://eheitzresearch.wordpress.com/738-2/
+
+Normal maps come from ambientCG https://ambientcg.com/ (provided under the Creative Commons CC0 1.0 Universal License.)
