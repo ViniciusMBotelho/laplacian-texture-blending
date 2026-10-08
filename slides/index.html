@@ -1255,8 +1255,7 @@
                 e areia.
               </li>
               <li>
-                <strong>Mapas de Normais (PBR):</strong> Superfícies sob luz
-                direta pontual.
+                <strong>Materiais Compostos:</strong> Transições de solo, terra batida e rocha.
               </li>
             </ul>
           </div>
@@ -1303,9 +1302,6 @@
               </button>
               <button class="tab-btn" onclick="setViewerTab('lap')">
                 Laplacian (4 Níveis)
-              </button>
-              <button class="tab-btn" onclick="setViewerTab('norm')">
-                Mapas de Normais
               </button>
             </div>
 
@@ -1679,11 +1675,6 @@
           tag.textContent =
             "Laplacian Blend (4 Níveis): Preservação nítida de altas frequências";
           btns[2].classList.add("active");
-        } else if (mode === "norm") {
-          img.src = "../output/normal_test/comparativo_completo.png";
-          tag.textContent =
-            "Normal Maps: Relevo preservado sem colapsar a direção da normal";
-          btns[3].classList.add("active");
         }
       }
 

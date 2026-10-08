@@ -127,49 +127,31 @@ Abra o navegador no endereço: **`http://localhost:8000/`**
 
 ---
 
-### Slide 8: Viabilidade Inicial Comprovada (Pergunta 7 do Edital) (~1 min 30s)
-* **Objetivo:** Comprovar o cumprimento da Regra 4.2 do edital com dados e imagens reais já geradas no ambiente.
-* **Interação ao vivo:** Clique nos botões acima da imagem para alternar entre as 4 abas (*Grid Comparativo*, *Baseline Linear*, *Laplacian* e *Mapas de Normais*)!
+#### Slide 8: Viabilidade Inicial Comprovada (Pergunta 7 do Edital) (~1 min 30s)
+* **Objetivo:** Comprovar o cumprimento da Regra de Viabilidade Inicial com dados e imagens reais já geradas no ambiente.
+* **Interação ao vivo:** Clique nos botões acima da imagem para alternar entre as 3 abas (*Grid Comparativo*, *Baseline Linear* e *Laplacian (4 Níveis)*)!
 * **Fala sugerida:**
   > *"Comprovamos que o nosso ambiente de desenvolvimento Linux está 100% operacional, cumprindo integralmente a Regra de Viabilidade Inicial do edital:*
   > 
-  > *(Clique na aba 'Grid Comparativo')* *Implementamos o algoritmo de referência em Python e simulamos a cadeia completa de mipmaps e DoG.*
+  > *(Clique na aba 'Grid Comparativo')* *Implementamos o algoritmo de referência em Python e simulamos a cadeia completa de mipmaps e DoG em texturas fotográficas de solo e pedras.*
   > 
-  > *(Clique na aba 'Baseline Linear' e depois em 'Laplacian')* *Observem a zona de transição: enquanto o Linear Blend perde nitidez, o Laplacian Blend manteve **98.5% da variância local original**, preservando a textura sem costuras visíveis.*
+  > *(Clique na aba 'Baseline Linear' e depois em 'Laplacian')* *Observem a zona de transição: enquanto o Linear Blend perde nitidez e gera um borrão fantasma, o Laplacian Blend manteve **98.5% da variância local original**, preservando o contraste e a textura sem costuras visíveis.*
   > 
-  > *(Clique na aba 'Mapas de Normais')* *Validamos também para mapas de normais, onde as saliências permanecem nítidas sem colapsar a iluminação.*
-  > 
-  > *Agora, para demonstrar que o método já é interativo e executável em tempo real, vou passar para o software rodando na GPU."*
+  > *Isso comprova que a nossa infraestrutura e o pipeline de experimentação já estão completamente prontos e validados para o projeto."*
 
 ---
 
-### MOMENTO DA DEMONSTRAÇÃO PRÁTICA AO VIVO (Tecla <kbd>2</kbd>) (~2 min)
-* **Ação:** Pressione a tecla <kbd>2</kbd> no teclado. A tela mudará instantaneamente para a demo WebGL do projeto!
-* **O que fazer na tela (no painel do canto inferior direito):**
-  1. **Desmarcar/Marcar o checkbox `enable`:**
-     - Desmarque `enable`: mostre à turma o blend linear tradicional borrado e nebuloso na transição.
-     - Marque `enable`: mostre instantaneamente os detalhes e contrastes voltando à vida através do Laplacian Blending.
-  2. **Mover o slider `threshold`:**
-     - Mova para esquerda/direita para mostrar a transição procedural avançando pela imagem dinamicamente em tempo real.
-  3. **Mover o slider `mip`:**
-     - Altere de 1 para 5 níveis, mostrando como raios maiores aumentam a suavidade sem criar ghosting.
-  4. **Alternar texturas (`tex0` / `tex1`):**
-     - Selecione as texturas de mapa de normais (`normal0` e `normal1`) para comprovar a estabilidade do relevo.
-* **Retorno:** Pressione a tecla <kbd>1</kbd> no teclado para voltar suavemente aos slides e avançar para o Slide 9!
-
----
-
-### Slide 9: Cronograma e Próximos Passos (~1 min)
-* **Objetivo:** Mostrar clareza de planejamento e alinhamento com as datas do edital.
-* **O que mostrar:** A linha do tempo dos marcos do projeto.
+### Slide 9: Proposta de Melhoria – LOD-Adaptive Blending (3D) (~1 min 30s)
+* **Objetivo:** Apresentar a contribuição original e inovação da equipe em relação ao artigo base.
+* **O que mostrar:** O problema do horizonte em 3D, o shader dinâmico com `dFdx`/`dFdy`, o diagrama do frustum em perspectiva e a proposta do Debug Heatmap.
 * **Fala sugerida:**
-  > *"Nosso cronograma está perfeitamente alinhado com as diretrizes da disciplina:*
+  > *"Além da investigação do artigo, propomos uma melhoria inédita voltada para motores de jogos e terrenos 3D: o **LOD-Adaptive Blending**.*
   > 
-  > *• **Após hoje (Checkpoint 1):** Incorporaremos as observações do professor e cadastraremos oficialmente o projeto de pesquisa no Cajuí, com o Prof. Wagner de Barros como coordenador.*
+  > *O artigo original calcula a pirâmide uniforme em todos os pixels da tela. Mas em uma câmera em perspectiva, texels distantes no horizonte já recaem em mips grosseiros. Calcular 6 níveis a 50 metros de distância é puro desperdício de TMU e largura de banda.*
   > 
-  > *• **Checkpoint 2 (12/11):** Apresentaremos a implementação completa do Level Skipping, a bateria de testes quantitativos (SSIM e tempo) e a primeira versão do artigo em LaTeX.*
+  > *Nossa proposta utiliza as **derivadas de hardware da GPU (`dFdx` e `dFdy`)** no fragment shader para calcular dinamicamente a pegada do pixel e truncar o laço Laplaciano: perto da câmera mantemos todos os níveis, em média distância reduzimos as bandas, e no horizonte chaveamos suavemente para o lerp simples.*
   > 
-  > *• **Entrega Final (03/12):** Envio do artigo de 8 a 12 páginas, repositório GitHub com documentação e scripts reproduzíveis, e demonstração conclusiva."*
+  > *Isso gera uma **economia estimada de 50% a 70%** no tráfego de textura sem qualquer perda perceptual. Para auditar isso no Checkpoint 2, integraremos esse **Debug Heatmap em cores falsas** ao vivo na nossa demo WebGL para comprovar a transição contínua e sem popping."*
 
 ---
 
@@ -177,6 +159,8 @@ Abra o navegador no endereço: **`http://localhost:8000/`**
 * **Objetivo:** Fechar a apresentação com segurança e abrir para a banca.
 * **Fala sugerida:**
   > *"Em síntese, o projeto possui fundamentação teórica sólida em computação gráfica, viabilidade técnica comprovada no nosso ambiente e relevância prática direta para motores de jogos e renderização em tempo real.*
+  > 
+  > *Muito obrigado pela atenção de todos, e agora estamos abertos para perguntas e sugestões do professor Wagner e dos colegas!"*
   > 
   > *Agradecemos a atenção de todos e estamos abertos a perguntas e sugestões do professor e dos colegas."*
 
