@@ -389,6 +389,59 @@
       .nav-label strong {
         color: #ffffff;
       }
+
+      @page {
+        size: 1600px 900px;
+        margin: 0;
+      }
+
+      @media print {
+        html,
+        body {
+          width: 1600px !important;
+          height: auto !important;
+          overflow: visible !important;
+          background-color: var(--bg) !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        #progress-bar-container,
+        #nav-bar {
+          display: none !important;
+        }
+
+        #deck {
+          position: static !important;
+          width: 1600px !important;
+          height: auto !important;
+          overflow: visible !important;
+          display: block !important;
+        }
+
+        .slide {
+          position: relative !important;
+          inset: auto !important;
+          width: 1600px !important;
+          height: 900px !important;
+          padding: 3.5rem 5rem !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          transform: none !important;
+          transition: none !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          overflow: hidden !important;
+          background-color: var(--bg) !important;
+        }
+
+        .slide:last-child {
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
+      }
     </style>
   </head>
   <body>
