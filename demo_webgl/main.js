@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import Stats from 'three/examples/jsm/libs/stats.module';
 
@@ -321,7 +322,251 @@ const FinalCombinePassShader = {
         }`
 };
 
+const TerrainShader = {
+    extensions: {
+        derivatives: true,
+    },
+    uniforms: {
+        't0': { value: null },
+        't1': { value: null },
+
+        'm0': { value: null },
+        'm1': { value: null },
+        'm2': { value: null },
+        'm3': { value: null },
+        'm4': { value: null },
+        'm5': { value: null },
+        'm6': { value: null },
+        'm7': { value: null },
+
+        'enable': { value: 1.0 },
+        'mode': { value: 3 },
+        'zoom': { value: 2.5 },
+        'mip': { value: 6 },
+        'perspectiveTilt': { value: 0.65 },
+        'nearLimit': { value: 0.35 },
+        'farLimit': { value: 0.75 },
+        'transBand': { value: TRANS_BAND },
+        'heatmap': { value: 0.0 },
+        'splitCompare': { value: 0.0 },
+        'resolution': { value: new THREE.Vector2(1, 1) },
+    },
+    vertexShader: /* glsl */`
+        varying vec2 vUv;
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+
+        void main() {
+            vUv = uv;
+            vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+            vWorldPosition = worldPosition.xyz;
+            // Transforma a normal para coordenadas de mundo preservando a direção da iluminação
+            vNormal = normalize( mat3( modelMatrix ) * normal );
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+    `,
+    fragmentShader: /* glsl */`
+        uniform sampler2D t0;
+        uniform sampler2D t1;
+
+        uniform sampler2D m0;
+        uniform sampler2D m1;
+        uniform sampler2D m2;
+        uniform sampler2D m3;
+        uniform sampler2D m4;
+        uniform sampler2D m5;
+        uniform sampler2D m6;
+        uniform sampler2D m7;
+
+        uniform float enable;
+        uniform int mode;
+        uniform float zoom;
+        uniform int mip;
+
+        uniform float perspectiveTilt;
+        uniform float nearLimit;
+        uniform float farLimit;
+        uniform float transBand;
+        uniform float heatmap;
+        uniform float splitCompare;
+        uniform vec2 resolution;
+
+        varying vec2 vUv;
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+
+        #define LVL_CNT 6
+
+        vec4 maskAt(int idx, vec2 p) {
+            if (idx <= 0) return texture2D(m0, p);
+            else if (idx == 1) return texture2D(m1, p);
+            else if (idx == 2) return texture2D(m2, p);
+            else if (idx == 3) return texture2D(m3, p);
+            else if (idx == 4) return texture2D(m4, p);
+            else if (idx == 5) return texture2D(m5, p);
+            else if (idx == 6) return texture2D(m6, p);
+            return texture2D(m7, p);
+        }
+
+        vec4 blendLinear(vec2 p) {
+            vec4 m = maskAt(mip + 1, p);
+            return texture2D(t0, p) * m + texture2D(t1, p) * (vec4(1.0) - m);
+        }
+
+        vec4 blendFull(vec2 p) {
+            vec4 a0 = texture2D(t0, p, 0.0);
+            vec4 a1 = texture2D(t1, p, 0.0);
+            vec4 acc = vec4(0.0);
+            for (int i = 0; i < LVL_CNT; i++) {
+                if (i >= mip) break;
+                float nb = float(i + 1);
+                vec4 b0 = texture2D(t0, p, nb);
+                vec4 b1 = texture2D(t1, p, nb);
+                vec4 m = maskAt(i + 1, p);
+                acc += (a0 - b0) * m + (a1 - b1) * (vec4(1.0) - m);
+                a0 = b0;
+                a1 = b1;
+            }
+            vec4 mr = maskAt(mip + 1, p);
+            return acc + a0 * mr + a1 * (vec4(1.0) - mr);
+        }
+
+        vec4 blendSkip(vec2 p) {
+            vec4 a0 = texture2D(t0, p, 0.0);
+            vec4 a1 = texture2D(t1, p, 0.0);
+            vec4 acc = vec4(0.0);
+            for (int i = 0; i < LVL_CNT; i += 2) {
+                if (i >= mip) break;
+                int nxt = (i + 2 <= mip) ? (i + 2) : mip;
+                float nb = float(nxt);
+                vec4 b0 = texture2D(t0, p, nb);
+                vec4 b1 = texture2D(t1, p, nb);
+                vec4 m = maskAt(i + 1, p);
+                acc += (a0 - b0) * m + (a1 - b1) * (vec4(1.0) - m);
+                a0 = b0;
+                a1 = b1;
+            }
+            vec4 mr = maskAt(mip + 1, p);
+            return acc + a0 * mr + a1 * (vec4(1.0) - mr);
+        }
+
+        void main() {
+            // Coordenada UV com tiling repetido sobre o terreno 3D
+            vec2 uv = (vUv * 8.0) / zoom;
+
+            // Posição de tela normalizada em X para o Split Compare
+            float screenX = gl_FragCoord.x / max(resolution.x, 1.0);
+
+            // Distância física real da câmera 3D até o fragmento da superfície
+            float vDistance = length(cameraPosition - vWorldPosition);
+
+            // Derivadas espaciais UV para acomodar relevo inclinado / ângulos rasantes
+            float geomGrad = length(dFdx(vUv * 6.0)) + length(dFdy(vUv * 6.0));
+
+            // Fator contínuo de distância [0.0, 1.0]
+            float tiltScale = mix(0.7, 1.35, perspectiveTilt);
+            float distNorm = clamp((vDistance - 16.0) / (46.0 / max(tiltScale, 0.1)), 0.0, 1.0);
+            float distFactor = clamp(distNorm * 0.90 + clamp(geomGrad * 0.10, 0.0, 0.10), 0.0, 1.0);
+
+            // Modo ativo
+            int activeMode = mode;
+            if (enable < 0.5) {
+                activeMode = 0;
+            }
+
+            // Split Compare: metade esquerda da tela = NVIDIA Original (Modo 1)
+            if (splitCompare > 0.5 && screenX < 0.5) {
+                activeMode = 1;
+            }
+
+            float nLim = min(nearLimit, farLimit - 0.05);
+            float fLim = max(farLimit, nearLimit + 0.05);
+
+            float execFull = 0.0;
+            float execSkip = 0.0;
+            float execLin  = 0.0;
+
+            vec4 finalColor = vec4(0.0);
+            if (activeMode == 0) {
+                finalColor = blendLinear(uv);
+                execLin = 1.0;
+            } else if (activeMode == 1) {
+                finalColor = blendFull(uv);
+                execFull = 1.0;
+            } else if (activeMode == 2) {
+                finalColor = blendSkip(uv);
+                execSkip = 1.0;
+            } else {
+                // Modo 3: Proposta Adaptativa por Distância Real da Câmera
+                float wNearToMid = smoothstep(nLim - transBand, nLim + transBand, distFactor);
+                float wMidToFar  = smoothstep(fLim - transBand, fLim + transBand, distFactor);
+
+                vec4 cFull = vec4(0.0);
+                vec4 cSkip = vec4(0.0);
+                vec4 cLin  = vec4(0.0);
+
+                if (wNearToMid < 1.0 && wMidToFar < 1.0) {
+                    cFull = blendFull(uv);
+                    execFull = 1.0;
+                }
+                if (wNearToMid > 0.0 && wMidToFar < 1.0) {
+                    cSkip = blendSkip(uv);
+                    execSkip = 1.0;
+                }
+                if (wMidToFar > 0.0) {
+                    cLin = blendLinear(uv);
+                    execLin = 1.0;
+                }
+
+                finalColor = mix(mix(cFull, cSkip, wNearToMid), cLin, wMidToFar);
+            }
+
+            // Iluminação direcional difusa suave para realçar as colinas e vales do terreno 3D
+            vec3 lightDir = normalize(vec3(0.35, 0.85, 0.40));
+            float diff = max(dot(normalize(vNormal), lightDir), 0.0);
+            float lighting = 0.60 + 0.40 * diff;
+            finalColor.rgb *= lighting;
+
+            // Visualização de Debug Heatmap (Custo TMU) sobre as colinas do terreno
+            if (heatmap > 0.5) {
+                vec3 colHigh = vec3(0.95, 0.22, 0.20); // Vermelho: Pirâmide Completa
+                vec3 colMid  = vec3(0.95, 0.75, 0.15); // Amarelo/Laranja: Level Skipping
+                vec3 colLow  = vec3(0.15, 0.82, 0.40); // Verde: Linear Blend
+
+                float nExec = execFull + execSkip + execLin;
+                vec3 firstCol  = execFull > 0.5 ? colHigh : (execSkip > 0.5 ? colMid : colLow);
+                vec3 secondCol = (execFull > 0.5 && execSkip > 0.5) ? colMid : colLow;
+                vec3 thirdCol  = colLow;
+                float stripe = mod(floor((gl_FragCoord.x + gl_FragCoord.y) / 10.0), max(nExec, 1.0));
+                vec3 heatColor = stripe < 0.5 ? firstCol : (stripe < 1.5 ? secondCol : thirdCol);
+
+                float luma = dot(finalColor.rgb, vec3(0.299, 0.587, 0.114));
+                vec3 shadedHeat = mix(finalColor.rgb, heatColor * (0.52 + 0.68 * luma), 0.70);
+
+                // Curvas de nível nos limiares de transição de regime
+                if (activeMode == 3) {
+                    float nearLine = 1.0 - smoothstep(0.0, 0.007, abs(distFactor - nLim));
+                    float farLine  = 1.0 - smoothstep(0.0, 0.007, abs(distFactor - fLim));
+                    float guideMask = max(nearLine, farLine) * 0.55;
+                    shadedHeat = mix(shadedHeat, vec3(1.0), guideMask);
+                }
+
+                finalColor.rgb = shadedHeat;
+            }
+
+            // Linha divisória vertical do Split Compare
+            if (splitCompare > 0.5) {
+                float splitLine = 1.0 - smoothstep(0.0008, 0.0022, abs(screenX - 0.5));
+                finalColor.rgb = mix(finalColor.rgb, vec3(0.22, 0.74, 0.97), splitLine * 0.85);
+            }
+
+            gl_FragColor = vec4(finalColor.rgb, 1.0);
+        }
+    `
+};
+
 const params = {
+    viewMode: '3d',
     mode: 3,
     perspectiveTilt: 0.65,
     nearLimit: 0.35,
@@ -338,6 +583,7 @@ const params = {
 };
 
 let renderer, effectCopy, effectFinalCombine, effectMask, mips, textures, aspectRatio;
+let scene3D, camera3D, controls, terrainMesh, terrainMaterial;
 
 const stats = Stats();
 document.body.appendChild(stats.dom);
@@ -416,7 +662,56 @@ function init() {
     effectFinalCombine.material.extensions.derivatives = true;
     effectMask = new ShaderPass(MaskShader, null);
 
-    const gui = new GUI({ width: 320 });
+    // Cena 3D Real com Terreno e Câmera Perspectiva Interativa
+    scene3D = new THREE.Scene();
+    scene3D.background = new THREE.Color(0x090d16);
+
+    camera3D = new THREE.PerspectiveCamera(45, aspectRatio, 0.1, 1000);
+    camera3D.position.set(0, 18, 32);
+
+    controls = new OrbitControls(camera3D, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05; // Evita que a câmera passe abaixo da base
+    controls.minDistance = 2;
+    controls.maxDistance = 120;
+    controls.target.set(0, 0, 0);
+
+    // Malha do Terreno 3D com relevo procedural suave (colinas e vales)
+    const terrainGeometry = new THREE.PlaneGeometry(60, 60, 128, 128);
+    const pos = terrainGeometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = Math.sin(x * 0.12) * Math.cos(y * 0.12) * 2.4
+                + Math.sin(x * 0.05 + y * 0.04) * 3.2
+                + Math.cos(x * 0.22 - y * 0.18) * 0.7;
+        pos.setZ(i, z);
+    }
+    terrainGeometry.computeVertexNormals();
+
+    terrainMaterial = new THREE.ShaderMaterial({
+        extensions: { derivatives: true },
+        uniforms: THREE.UniformsUtils.clone(TerrainShader.uniforms),
+        vertexShader: TerrainShader.vertexShader,
+        fragmentShader: TerrainShader.fragmentShader,
+    });
+
+    terrainMesh = new THREE.Mesh(terrainGeometry, terrainMaterial);
+    terrainMesh.rotation.x = -Math.PI / 2;
+    scene3D.add(terrainMesh);
+
+    const gui = new GUI({ width: 330 });
+
+    gui.add(params, 'viewMode', {
+        '3D: Terreno em Perspectiva': '3d',
+        '2D: Inspeção Plana': '2d',
+    }).name('viewMode').onChange((val) => {
+        if (controls) {
+            controls.enabled = (val === '3d');
+        }
+        updateMetricsHUD();
+    });
 
     gui.add(params, 'mode', {
         '0: Baseline - Linear Blend': 0,
@@ -684,6 +979,15 @@ function updateMetricsHUD() {
         elSplitBanner.style.display = params.splitCompare ? 'flex' : 'none';
         elSplitRight.innerHTML = `${meta.short} &#9654;`;
     }
+
+    const elViewHint = document.getElementById('hud-view-hint');
+    if (elViewHint) {
+        if (params.viewMode === '3d') {
+            elViewHint.innerHTML = '<span style="color:#38bdf8;">&#9654; Cena 3D Real:</span> Botão esquerdo orbita · Direito move · Scroll aproxima';
+        } else {
+            elViewHint.innerHTML = '<span style="color:#94a3b8;">&#9654; Inspeção 2D:</span> Projeção em plano de tela cheia';
+        }
+    }
 }
 
 function saveAsImage() {
@@ -707,6 +1011,10 @@ function saveAsImage() {
 
 function onWindowResize() {
     aspectRatio = window.innerWidth / window.innerHeight;
+    if (camera3D) {
+        camera3D.aspect = aspectRatio;
+        camera3D.updateProjectionMatrix();
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     render();
 }
@@ -738,27 +1046,42 @@ function render() {
         effectCopy.render(renderer, mips["mask"][i + 1]);
     }
 
-    effectFinalCombine.renderToScreen = true;
-    for (let i = 0; i < 8; i++) {
-        effectFinalCombine.uniforms['m'+i].value = mips["mask"][i].texture;
-    }
-    effectFinalCombine.uniforms['mip'].value = params.mip;
-    effectFinalCombine.uniforms['t0'].value = textures[params.tex0];
-    effectFinalCombine.uniforms['t1'].value = textures[params.tex1];
-    effectFinalCombine.uniforms['enable'].value = params.enable ? 1.0 : 0.0;
-    effectFinalCombine.uniforms['mode'].value = Number(params.mode);
-    effectFinalCombine.uniforms['zoom'].value = params.zoom;
-    effectFinalCombine.uniforms['aspectRatio'].value = aspectRatio;
-    effectFinalCombine.uniforms['perspectiveTilt'].value = params.perspectiveTilt;
-    effectFinalCombine.uniforms['nearLimit'].value = params.nearLimit;
-    effectFinalCombine.uniforms['farLimit'].value = params.farLimit;
-    effectFinalCombine.uniforms['transBand'].value = TRANS_BAND;
-    effectFinalCombine.uniforms['heatmap'].value = params.heatmap ? 1.0 : 0.0;
-    effectFinalCombine.uniforms['splitCompare'].value = params.splitCompare ? 1.0 : 0.0;
+    const syncUniforms = (target) => {
+        for (let i = 0; i < 8; i++) {
+            target['m' + i].value = mips["mask"][i].texture;
+        }
+        target['mip'].value = params.mip;
+        target['t0'].value = textures[params.tex0];
+        target['t1'].value = textures[params.tex1];
+        target['enable'].value = params.enable ? 1.0 : 0.0;
+        target['mode'].value = Number(params.mode);
+        target['zoom'].value = params.zoom;
+        target['perspectiveTilt'].value = params.perspectiveTilt;
+        target['nearLimit'].value = params.nearLimit;
+        target['farLimit'].value = params.farLimit;
+        target['transBand'].value = TRANS_BAND;
+        target['heatmap'].value = params.heatmap ? 1.0 : 0.0;
+        target['splitCompare'].value = params.splitCompare ? 1.0 : 0.0;
+    };
 
-    gpuTimerBegin();
-    effectFinalCombine.render(renderer, null);
-    gpuTimerEnd();
+    if (params.viewMode === '3d' && terrainMaterial && scene3D && camera3D) {
+        if (controls) controls.update();
+        syncUniforms(terrainMaterial.uniforms);
+        terrainMaterial.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+
+        gpuTimerBegin();
+        renderer.setRenderTarget(null);
+        renderer.render(scene3D, camera3D);
+        gpuTimerEnd();
+    } else {
+        syncUniforms(effectFinalCombine.uniforms);
+        effectFinalCombine.uniforms['aspectRatio'].value = aspectRatio;
+
+        gpuTimerBegin();
+        effectFinalCombine.render(renderer, null);
+        gpuTimerEnd();
+    }
+
     gpuTimerPoll();
 
     const cpuMs = performance.now() - cpuStart;
