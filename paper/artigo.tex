@@ -83,15 +83,10 @@
 % -----------------------------------------------------------------------------
 % Referências e links (Compatibilidade com natbib/bibtex e biblatex)
 % -----------------------------------------------------------------------------
-\IfFileExists{biblatex.sty}{%
-  \usepackage[backend=biber,style=authoryear,maxcitenames=2,maxbibnames=20]{biblatex}
-  \addbibresource{referencias.bib}
-}{%
-  \usepackage[round,authoryear]{natbib}
-  \bibliographystyle{plainnat}
-  \providecommand{\parencite}[1]{\citep{#1}}
-  \providecommand{\textcite}[1]{\citet{#1}}
-}
+\usepackage[round,authoryear]{natbib}
+\bibliographystyle{plainnat}
+\providecommand{\parencite}[1]{\citep{#1}}
+\providecommand{\textcite}[1]{\citet{#1}}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 
@@ -372,10 +367,6 @@ Não introduza novos experimentos. Indique trabalhos futuros concretos.}
 % REFERÊNCIAS
 % =============================================================================
 \balance
-\IfFileExists{biblatex.sty}{%
-  \printbibliography[title={Referências}]
-}{%
-  \bibliography{referencias}
-}
+\bibliography{referencias}
 
 \end{document}
