@@ -23,8 +23,12 @@
 % -----------------------------------------------------------------------------
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[brazil]{babel}
-\usepackage{newtxtext,newtxmath}
+\usepackage[brazilian]{babel}
+\IfFileExists{newtxtext.sty}{%
+  \usepackage{newtxtext,newtxmath}%
+}{%
+  \usepackage{mathptmx}%
+}
 \usepackage{microtype}
 
 % -----------------------------------------------------------------------------
@@ -77,10 +81,17 @@
 \setlength{\intextsep}{6pt plus 2pt minus 2pt}
 
 % -----------------------------------------------------------------------------
-% Referências e links
+% Referências e links (Compatibilidade com natbib/bibtex e biblatex)
 % -----------------------------------------------------------------------------
-\usepackage[backend=biber,style=authoryear,maxcitenames=2,maxbibnames=20]{biblatex}
-\addbibresource{referencias.bib}
+\IfFileExists{biblatex.sty}{%
+  \usepackage[backend=biber,style=authoryear,maxcitenames=2,maxbibnames=20]{biblatex}
+  \addbibresource{referencias.bib}
+}{%
+  \usepackage[round,authoryear]{natbib}
+  \bibliographystyle{plainnat}
+  \providecommand{\parencite}[1]{\citep{#1}}
+  \providecommand{\textcite}[1]{\citet{#1}}
+}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 
@@ -361,6 +372,10 @@ Não introduza novos experimentos. Indique trabalhos futuros concretos.}
 % REFERÊNCIAS
 % =============================================================================
 \balance
-\printbibliography[title={Referências}]
+\IfFileExists{biblatex.sty}{%
+  \printbibliography[title={Referências}]
+}{%
+  \bibliography{referencias}
+}
 
 \end{document}

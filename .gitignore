@@ -8,3 +8,5 @@ __pycache__/
 .codex/
 **/.vite/
 ROTEIRO_CHECKPOINT_2.md
+*.synctex.gz
+.latexbuild/
