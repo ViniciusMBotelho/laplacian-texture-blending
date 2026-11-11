@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 	<head>
 		<meta charset="utf-8">
 		<title>WebGL GPU Friendly Laplacian Texture Blending and Tiling</title>
 		<style>
-			body { margin: 0; overflow: hidden; }
+			body {
+				margin: 0;
+				overflow: hidden;
+				background: #090d16;
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+			}
 			#info {
 				position: absolute;
 				color: white;
@@ -18,20 +23,227 @@
 				top: auto !important;
 				bottom: 18px !important;
 				right: 18px !important;
-				max-height: 85vh;
+				max-height: 88vh;
+				border-radius: 8px;
+				overflow: hidden;
+				box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+			}
+			/* HUD de Métricas em Tempo Real no canto inferior esquerdo */
+			#metrics-hud {
+				position: fixed;
+				bottom: 18px;
+				left: 18px;
+				z-index: 120;
+				min-width: 310px;
+				max-width: 360px;
+				background: rgba(15, 23, 42, 0.88);
+				backdrop-filter: blur(10px);
+				-webkit-backdrop-filter: blur(10px);
+				border: 1px solid rgba(148, 163, 184, 0.24);
+				border-radius: 12px;
+				padding: 14px 16px;
+				color: #f8fafc;
+				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+				pointer-events: none;
+				user-select: none;
+			}
+			.hud-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 8px;
+				padding-bottom: 7px;
+				border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+			}
+			.hud-title {
+				font-size: 0.72rem;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: #94a3b8;
+			}
+			.hud-badge {
+				font-size: 0.68rem;
+				font-weight: 700;
+				padding: 2px 7px;
+				border-radius: 999px;
+				background: rgba(56, 189, 248, 0.16);
+				color: #38bdf8;
+				border: 1px solid rgba(56, 189, 248, 0.35);
+			}
+			.hud-mode-name {
+				font-size: 0.92rem;
+				font-weight: 700;
+				color: #e2e8f0;
+				margin-bottom: 10px;
+			}
+			.hud-metrics-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+				margin-bottom: 10px;
+			}
+			.hud-metric-box {
+				background: rgba(30, 41, 59, 0.65);
+				border: 1px solid rgba(148, 163, 184, 0.14);
+				border-radius: 8px;
+				padding: 7px 10px;
+			}
+			.hud-metric-label {
+				font-size: 0.68rem;
+				color: #94a3b8;
+				margin-bottom: 2px;
+			}
+			.hud-metric-value {
+				font-size: 1.05rem;
+				font-weight: 800;
+				font-variant-numeric: tabular-nums;
+				color: #f8fafc;
+			}
+			.hud-metric-sub {
+				font-size: 0.68rem;
+				color: #64748b;
+				margin-top: 1px;
+			}
+			.hud-savings-positive {
+				color: #34d399;
+			}
+			.hud-savings-neutral {
+				color: #fbbf24;
+			}
+			.hud-zones {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				font-size: 0.72rem;
+				color: #cbd5e1;
+				padding-top: 6px;
+				border-top: 1px solid rgba(148, 163, 184, 0.14);
+			}
+			.hud-zone-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.hud-zone-left {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.hud-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				display: inline-block;
+			}
+			.dot-red { background: #f23833; box-shadow: 0 0 6px rgba(242, 56, 51, 0.6); }
+			.dot-yellow { background: #f2bf26; box-shadow: 0 0 6px rgba(242, 191, 38, 0.6); }
+			.dot-green { background: #26d166; box-shadow: 0 0 6px rgba(38, 209, 102, 0.6); }
+			.dot-trans { background: repeating-linear-gradient(45deg, #f23833 0 2px, #f2bf26 2px 4px, #26d166 4px 6px); }
+			.hud-timing {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				font-size: 0.72rem;
+				color: #cbd5e1;
+				font-variant-numeric: tabular-nums;
+				margin-top: 6px;
+				padding-top: 6px;
+				border-top: 1px solid rgba(148, 163, 184, 0.14);
+			}
+			/* Indicador superior quando Split Compare está ativo */
+			#split-banner {
+				position: fixed;
+				top: 14px;
+				left: 50%;
+				transform: translateX(-50%);
+				z-index: 120;
+				display: none;
+				align-items: center;
+				gap: 14px;
+				background: rgba(15, 23, 42, 0.88);
+				backdrop-filter: blur(8px);
+				border: 1px solid rgba(148, 163, 184, 0.28);
+				padding: 6px 16px;
+				border-radius: 999px;
+				color: #f8fafc;
+				font-size: 0.78rem;
+				font-weight: 600;
+				pointer-events: none;
+				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+			}
+			.split-divider-tag {
+				color: #38bdf8;
+				font-weight: 800;
 			}
 		</style>
 	</head>
 	<body>
+		<!-- Banner de Comparação Lado a Lado -->
+		<div id="split-banner">
+			<span>&#9664; NVIDIA Original (Pirâmide Completa)</span>
+			<span class="split-divider-tag">|</span>
+			<span id="split-right-label">Proposta Adaptativa &#9654;</span>
+		</div>
+
+		<!-- HUD de Métricas de Amostragem (TMU) em Tempo Real -->
+		<div id="metrics-hud">
+			<div class="hud-header">
+				<span class="hud-title">Métricas TMU / Shader</span>
+				<span class="hud-badge" id="hud-badge">PROPOSTA</span>
+			</div>
+			<div class="hud-mode-name" id="hud-mode">3: Proposta Adaptativa (LOD + Skip)</div>
+			<div class="hud-metrics-grid">
+				<div class="hud-metric-box">
+					<div class="hud-metric-label">Texture Fetches / px (estimado)</div>
+					<div class="hud-metric-value" id="hud-fetches">~10.2 taps</div>
+					<div class="hud-metric-sub" id="hud-baseline-ref">NVIDIA (6 mips): 21.0 taps</div>
+				</div>
+				<div class="hud-metric-box">
+					<div class="hud-metric-label">Economia nas TMUs</div>
+					<div class="hud-metric-value hud-savings-positive" id="hud-savings">-51.4% fetches</div>
+					<div class="hud-metric-sub" id="hud-savings-sub">vs. Pirâmide Completa</div>
+				</div>
+			</div>
+			<div class="hud-zones">
+				<div class="hud-zone-row">
+					<span class="hud-zone-left"><span class="hud-dot dot-red"></span>Zona Próxima (Completa)</span>
+					<span id="hud-zone-near">21 taps</span>
+				</div>
+				<div class="hud-zone-row">
+					<span class="hud-zone-left"><span class="hud-dot dot-yellow"></span>Zona Média (Level Skip)</span>
+					<span id="hud-zone-mid">12 taps</span>
+				</div>
+				<div class="hud-zone-row">
+					<span class="hud-zone-left"><span class="hud-dot dot-green"></span>Zona Distante (Linear)</span>
+					<span id="hud-zone-far">3 taps</span>
+				</div>
+				<div class="hud-zone-row">
+					<span class="hud-zone-left"><span class="hud-dot dot-trans"></span>Faixas de Transição (2 regimes)</span>
+					<span id="hud-zone-trans">—</span>
+				</div>
+			</div>
+			<div class="hud-timing">
+				<div class="hud-zone-row">
+					<span>Frame (média móvel, vsync)</span>
+					<span id="hud-frame">—</span>
+				</div>
+				<div class="hud-zone-row">
+					<span>GPU (passo final)</span>
+					<span id="hud-gpu">—</span>
+				</div>
+			</div>
+		</div>
+
 		<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.6/dist/es-module-shims.js"></script>
-        <script type="importmap">
-            {
-                "imports": {
-                    "three": "https://unpkg.com/three@0.149.0/build/three.module.js",
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "https://unpkg.com/three@0.149.0/build/three.module.js",
 					"three/examples/jsm/": "https://unpkg.com/three@0.149.0/examples/jsm/"
-                }
-            }
-        </script>        
+				}
+			}
+		</script>
 		<script type="module" src="main.js"></script>
 		<script>
 			// Atalhos de teclado sincronizados com o container principal
