@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 	<head>
 		<meta charset="utf-8">
-		<title>WebGL GPU Friendly Laplacian Texture Blending and Tiling</title>
+		<title>WebGL 2.0 Laplacian Texture Blending - Ambiente 3D</title>
 		<style>
 			body {
 				margin: 0;
@@ -10,32 +10,22 @@
 				background: #090d16;
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
 			}
-			#info {
-				position: absolute;
-				color: white;
-				bottom: 10px;
-				left: 15px;
-				z-index: 100;
-				display: block;
-			}
-			/* Posiciona o painel lil-gui no canto inferior direito */
 			.lil-gui.root {
 				top: auto !important;
 				bottom: 18px !important;
 				right: 18px !important;
 				max-height: 88vh;
 				border-radius: 8px;
-				overflow: hidden;
+				overflow-y: auto;
 				box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 			}
-			/* HUD de Métricas em Tempo Real no canto inferior esquerdo */
 			#metrics-hud {
 				position: fixed;
 				bottom: 18px;
 				left: 18px;
 				z-index: 120;
-				min-width: 310px;
-				max-width: 360px;
+				min-width: 320px;
+				max-width: 375px;
 				background: rgba(15, 23, 42, 0.88);
 				backdrop-filter: blur(10px);
 				-webkit-backdrop-filter: blur(10px);
@@ -75,7 +65,7 @@
 				font-size: 0.92rem;
 				font-weight: 700;
 				color: #e2e8f0;
-				margin-bottom: 10px;
+				margin-bottom: 6px;
 			}
 			.hud-metrics-grid {
 				display: grid;
@@ -101,16 +91,12 @@
 				color: #f8fafc;
 			}
 			.hud-metric-sub {
-				font-size: 0.68rem;
-				color: #64748b;
+				font-size: 0.66rem;
+				color: #94a3b8;
 				margin-top: 1px;
 			}
-			.hud-savings-positive {
-				color: #34d399;
-			}
-			.hud-savings-neutral {
-				color: #fbbf24;
-			}
+			.hud-savings-positive { color: #34d399; }
+			.hud-savings-neutral { color: #fbbf24; }
 			.hud-zones {
 				display: flex;
 				flex-direction: column;
@@ -151,10 +137,9 @@
 				padding-top: 6px;
 				border-top: 1px solid rgba(148, 163, 184, 0.14);
 			}
-			/* Indicador superior quando Split Compare está ativo */
 			#split-banner {
 				position: fixed;
-				top: 14px;
+				top: 58px;
 				left: 50%;
 				transform: translateX(-50%);
 				z-index: 120;
@@ -172,68 +157,195 @@
 				pointer-events: none;
 				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 			}
-			.split-divider-tag {
+			.split-divider-tag { color: #38bdf8; font-weight: 800; }
+			#avatar-hint {
+				position: fixed;
+				top: 14px;
+				left: 100px;
+				max-width: calc(100vw - 560px);
+				z-index: 115;
+				display: none;
+				background: rgba(15, 23, 42, 0.88);
+				border: 1px solid rgba(56, 189, 248, 0.35);
+				border-radius: 10px;
+				padding: 6px 14px;
+				color: #e2e8f0;
+				font-size: 0.76rem;
+				font-weight: 600;
+				line-height: 1.35;
+				pointer-events: none;
+			}
+			#bench-modal {
+				position: fixed;
+				inset: 0;
+				z-index: 300;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				background: rgba(2, 6, 23, 0.75);
+				backdrop-filter: blur(6px);
+			}
+			.bench-card {
+				width: min(960px, 92vw);
+				max-height: 85vh;
+				display: flex;
+				flex-direction: column;
+				background: #0f172a;
+				border: 1px solid rgba(148, 163, 184, 0.28);
+				border-radius: 14px;
+				padding: 18px 20px;
+				color: #f8fafc;
+				box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+			}
+			.bench-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 8px;
+			}
+			.bench-head h3 {
+				margin: 0;
+				font-size: 1.05rem;
 				color: #38bdf8;
-				font-weight: 800;
+			}
+			.bench-actions {
+				display: flex;
+				gap: 8px;
+			}
+			.bench-btn {
+				background: #1e293b;
+				border: 1px solid rgba(148, 163, 184, 0.3);
+				color: #f8fafc;
+				padding: 5px 11px;
+				border-radius: 6px;
+				font-size: 0.78rem;
+				cursor: pointer;
+			}
+			.bench-btn:hover { background: #334155; }
+			.bench-meta {
+				font-size: 0.76rem;
+				color: #94a3b8;
+				margin-bottom: 6px;
+			}
+			.bench-table-wrap {
+				overflow: auto;
+				margin-top: 8px;
+				border: 1px solid rgba(148, 163, 184, 0.16);
+				border-radius: 8px;
+			}
+			table.bench-table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.76rem;
+				font-variant-numeric: tabular-nums;
+			}
+			table.bench-table th, table.bench-table td {
+				padding: 7px 10px;
+				text-align: left;
+				border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+			}
+			table.bench-table th {
+				background: #1e293b;
+				color: #cbd5e1;
+				position: sticky;
+				top: 0;
 			}
 		</style>
 	</head>
 	<body>
-		<!-- Banner de Comparação Lado a Lado -->
 		<div id="split-banner">
-			<span>&#9664; NVIDIA Original (Pirâmide Completa)</span>
+			<span>&#9664; NVIDIA N=6 (Referencia)</span>
 			<span class="split-divider-tag">|</span>
-			<span id="split-right-label">Proposta Adaptativa &#9654;</span>
+			<span id="split-right-label">Adaptativa 3D &#9654;</span>
 		</div>
 
-		<!-- HUD de Métricas de Amostragem (TMU) em Tempo Real -->
+		<div id="avatar-hint">
+			Avatar 3ª Pessoa: <b>WASD</b> andar · <b>Shift</b> correr · <b>Arraste</b> girar câmera · <b>Scroll</b> zoom
+		</div>
+
 		<div id="metrics-hud">
 			<div class="hud-header">
-				<span class="hud-title">Métricas TMU / Shader</span>
-				<span class="hud-badge" id="hud-badge">PROPOSTA</span>
+				<span class="hud-title">Telemetria Real 3D (WebGL 2.0)</span>
+				<span class="hud-badge" id="hud-badge">PROPOSTA 3D</span>
 			</div>
-			<div class="hud-mode-name" id="hud-mode">3: Proposta Adaptativa (LOD + Skip)</div>
+			<div class="hud-mode-name" id="hud-mode">5: Proposta Adaptativa (LOD+Skip)</div>
 			<div id="hud-view-hint" style="font-size: 0.69rem; color: #38bdf8; margin-bottom: 9px; font-weight: 600; line-height: 1.3;">
-				Câmera 3D: Arraste com botão esquerdo para orbitar · Scroll para Zoom
+				Cena 3D Real: Botao esquerdo orbita · Direito move · Scroll aproxima
 			</div>
 			<div class="hud-metrics-grid">
 				<div class="hud-metric-box">
-					<div class="hud-metric-label">Texture Fetches / px (estimado)</div>
-					<div class="hud-metric-value" id="hud-fetches">~10.2 taps</div>
-					<div class="hud-metric-sub" id="hud-baseline-ref">NVIDIA (6 mips): 21.0 taps</div>
+					<div class="hud-metric-label">Texture Fetches / px</div>
+					<div class="hud-metric-value" id="hud-fetches">—</div>
+					<div class="hud-metric-sub" id="hud-baseline-ref">NVIDIA: —</div>
 				</div>
 				<div class="hud-metric-box">
 					<div class="hud-metric-label">Economia nas TMUs</div>
-					<div class="hud-metric-value hud-savings-positive" id="hud-savings">-51.4% fetches</div>
-					<div class="hud-metric-sub" id="hud-savings-sub">vs. Pirâmide Completa</div>
+					<div class="hud-metric-value hud-savings-positive" id="hud-savings">—</div>
+					<div class="hud-metric-sub" id="hud-savings-sub">vs. Piramide Completa</div>
 				</div>
 			</div>
 			<div class="hud-zones">
 				<div class="hud-zone-row">
-					<span class="hud-zone-left"><span class="hud-dot dot-red"></span>Zona Próxima (Completa)</span>
-					<span id="hud-zone-near">21 taps</span>
+					<span class="hud-zone-left"><span class="hud-dot dot-red"></span>Zona Proxima (Completa)</span>
+					<span id="hud-zone-near">—</span>
 				</div>
 				<div class="hud-zone-row">
-					<span class="hud-zone-left"><span class="hud-dot dot-yellow"></span>Zona Média (Level Skip)</span>
-					<span id="hud-zone-mid">12 taps</span>
+					<span class="hud-zone-left"><span class="hud-dot dot-yellow"></span>Zona Media (Level Skip)</span>
+					<span id="hud-zone-mid">—</span>
 				</div>
 				<div class="hud-zone-row">
 					<span class="hud-zone-left"><span class="hud-dot dot-green"></span>Zona Distante (Linear)</span>
-					<span id="hud-zone-far">3 taps</span>
+					<span id="hud-zone-far">—</span>
 				</div>
 				<div class="hud-zone-row">
-					<span class="hud-zone-left"><span class="hud-dot dot-trans"></span>Faixas de Transição (2 regimes)</span>
+					<span class="hud-zone-left"><span class="hud-dot dot-trans"></span>Faixa de Transicao</span>
 					<span id="hud-zone-trans">—</span>
 				</div>
 			</div>
 			<div class="hud-timing">
 				<div class="hud-zone-row">
-					<span>Frame (média móvel, vsync)</span>
-					<span id="hud-frame">—</span>
+					<span>LOD Medio (lambda)</span>
+					<span id="hud-lod">—</span>
 				</div>
 				<div class="hud-zone-row">
-					<span>GPU (passo final)</span>
+					<span>GPU Tempo (timer query)</span>
 					<span id="hud-gpu">—</span>
+				</div>
+				<div class="hud-zone-row">
+					<span>GPU Hardware</span>
+					<span id="hud-gpu-info" style="color:#94a3b8; max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">—</span>
+				</div>
+			</div>
+		</div>
+
+		<div id="bench-modal">
+			<div class="bench-card">
+				<div class="bench-head">
+					<h3>Suite de Benchmark GPU — WebGL 2.0</h3>
+					<div class="bench-actions">
+						<button class="bench-btn" id="bench-dl-json">Exportar JSON</button>
+						<button class="bench-btn" id="bench-dl-csv">Exportar CSV</button>
+						<button class="bench-btn" id="bench-close">Fechar</button>
+					</div>
+				</div>
+				<div class="bench-meta" id="bench-hw">Aguardando execucao...</div>
+				<div class="bench-meta" id="bench-status" style="color: #38bdf8;">—</div>
+				<div class="bench-table-wrap">
+					<table class="bench-table">
+						<thead>
+							<tr>
+								<th>Resolucao</th>
+								<th>Preset</th>
+								<th>Material</th>
+								<th>Metodo</th>
+								<th>GPU Tempo (ms)</th>
+								<th>Fetches/px</th>
+								<th>Red. TMU</th>
+								<th>PSNR 3D</th>
+							</tr>
+						</thead>
+						<tbody id="bench-tbody"></tbody>
+					</table>
 				</div>
 			</div>
 		</div>
@@ -249,7 +361,6 @@
 		</script>
 		<script type="module" src="main.js"></script>
 		<script>
-			// Atalhos de teclado sincronizados com o container principal
 			window.addEventListener('keydown', (e) => {
 				if (window.parent && window.parent !== window) {
 					if (e.key === '1' && window.parent.switchView) {
