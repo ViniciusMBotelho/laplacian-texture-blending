@@ -10,3 +10,8 @@ __pycache__/
 ROTEIRO_CHECKPOINT_2.md
 *.synctex.gz
 .latexbuild/
+node_modules/
+output/validation/
+.update_benchmark.py
+.venv/
+/ATUALIZACOES_ARTIGO_E_TESTES.md

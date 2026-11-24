@@ -279,7 +279,7 @@
 					<div class="hud-metric-sub" id="hud-baseline-ref">NVIDIA: —</div>
 				</div>
 				<div class="hud-metric-box">
-					<div class="hud-metric-label">Economia nas TMUs</div>
+					<div class="hud-metric-label">Redução de amostras</div>
 					<div class="hud-metric-value hud-savings-positive" id="hud-savings">—</div>
 					<div class="hud-metric-sub" id="hud-savings-sub">vs. Piramide Completa</div>
 				</div>
@@ -340,7 +340,7 @@
 								<th>Metodo</th>
 								<th>GPU Tempo (ms)</th>
 								<th>Fetches/px</th>
-								<th>Red. TMU</th>
+								<th>Red. amostras</th>
 								<th>PSNR 3D</th>
 							</tr>
 						</thead>
@@ -350,12 +350,11 @@
 			</div>
 		</div>
 
-		<script async src="https://ga.jspm.io/npm:es-module-shims@1.4.6/dist/es-module-shims.js"></script>
 		<script type="importmap">
 			{
 				"imports": {
-					"three": "https://unpkg.com/three@0.149.0/build/three.module.js",
-					"three/examples/jsm/": "https://unpkg.com/three@0.149.0/examples/jsm/"
+					"three": "../node_modules/three/build/three.module.js",
+					"three/examples/jsm/": "../node_modules/three/examples/jsm/"
 				}
 			}
 		</script>

@@ -36,6 +36,7 @@ const params = {
 
     mode: 5,
     anisotropicLod: true,
+    baseFilter: 'grad',
     maxAniso: 8,
     nearLimit: 0.25,
     farLimit: 0.65,
@@ -249,6 +250,7 @@ function init() {
     window.__BENCHMARK_API__ = {
         runQuick: () => benchRunner.runSuite({ full: false }),
         runFull: () => benchRunner.runSuite({ full: true }),
+        runConfigured: (options) => benchRunner.runSuite(options),
         captureComparisonFrames: (preset, materialMode, width, height) =>
             benchRunner.captureComparisonFrames(preset, materialMode, width, height),
         getLastResults: () => benchRunner.lastReport,
@@ -482,6 +484,7 @@ function setupGUI(hwMaxAniso) {
         .onChange(triggerDiscreteRefresh);
 
     fAlgo.add(params, 'anisotropicLod').name('LOD Anisotropico').listen().onChange(triggerDiscreteRefresh);
+    fAlgo.add(params, 'baseFilter', ['grad', 'lod']).name('Filtro nivel inicial').listen().onChange(triggerDiscreteRefresh);
     fAlgo
         .add(params, 'maxAniso', 1, Math.max(1, hwMaxAniso), 1)
         .name('maxAniso')
@@ -597,7 +600,7 @@ async function triggerBenchmark(full) {
             const gpuName = report.hardware.unmaskedRenderer || report.hardware.renderer;
             const timerTag = report.hardware.hasGpuTimerQuery
                 ? 'EXT_disjoint_timer_query_webgl2 (Hardware)'
-                : 'CPU Fallback (gl.finish + performance.now)';
+                : 'Timer GPU indisponivel';
             hwEl.textContent = `GPU: ${gpuName} | Timer: ${timerTag} | Max Aniso: ${report.hardware.maxAnisotropy}x`;
         }
         if (statusEl) {
@@ -620,7 +623,7 @@ async function triggerBenchmark(full) {
                         <td>${r.method}</td>
                         <td>${msTxt}</td>
                         <td>${r.fetches_px.toFixed(2)}</td>
-                        <td>${r.tmu_reduction_pct.toFixed(1)}%</td>
+                        <td>${r.logical_sample_reduction_pct.toFixed(1)}%</td>
                         <td>${psnrTxt}</td>
                     </tr>`;
                 })
@@ -669,6 +672,7 @@ function syncUniforms3D() {
     u.mip.value = Number(params.mip);
     u.zoom.value = params.zoom;
     u.anisotropicLod.value = params.anisotropicLod ? 1.0 : 0.0;
+    u.baseFilter.value = params.baseFilter === 'grad' ? 1 : 0;
     u.maxAniso.value = params.maxAniso;
     u.maxLod.value = params.maxLod;
     u.nearLimit.value = params.nearLimit;

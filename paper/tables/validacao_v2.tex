@@ -1,0 +1,18 @@
+\begin{table*}[t]
+\centering\small\setlength{\tabcolsep}{4pt}
+\caption{Validação funcional do protocolo v2 na RTX 4050. PSNR e SSIM usam as mesmas capturas RGBA e dimensões da temporização. Os enquadramentos diferem entre as colunas; esta tabela não mede escalabilidade de resolução. Cada linha tem três consultas de coleta válidas por caso, sem descartes.}
+\label{tab:v2quality}
+\begin{tabular}{lrrrr}\toprule
+ & \multicolumn{2}{c}{1080p, panorâmica} & \multicolumn{2}{c}{4K, rasante}\\
+Método & PSNR (dB) & SSIM & PSNR (dB) & SSIM\\\midrule
+Linear & 32,65 & 0,963659 & 31,17 & 0,985847\\
+Completo 6 & $\infty$ & 1,000000 & $\infty$ & 1,000000\\
+Truncado 3 & 32,52 & 0,957478 & 31,76 & 0,985509\\
+Salto par & 51,99 & 0,999317 & 50,03 & 0,999633\\
+Híbrido & 37,09 & 0,984116 & 36,89 & 0,994978\\
+Adaptativo iso./grad & 35,12 & 0,969095 & 40,03 & 0,990984\\
+Adaptativo aniso./grad & 42,18 & 0,988397 & 50,77 & 0,998220\\
+Adaptativo iso./lod & 28,02 & 0,844573 & 29,52 & 0,927398\\
+Adaptativo aniso./lod & 28,90 & 0,858891 & 29,96 & 0,931633\\
+\bottomrule\end{tabular}
+\end{table*}

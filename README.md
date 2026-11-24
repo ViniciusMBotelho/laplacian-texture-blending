@@ -1,5 +1,14 @@
 # GPU-Friendly Laplacian Texture Blending
 
+> **Validação automatizada (protocolo v2):** esta cópia contém a correção de resolução,
+> exportação de consultas brutas e ablação LOD × filtragem. Execute `npm ci`, instale
+> `requirements-validation.txt` no Python e rode `npm test`. Para os testes reais
+> de navegador, use `npm run test:gpu`; para 1080p/4K, `npm run test:gpu:resolutions`.
+> Veja também o [artigo atualizado](paper/artigo.pdf).
+> Consulte [o guia de testes](docs/TESTES_AUTOMATIZADOS.md) para preparação e coleta
+> experimental com sessões independentes. Os resultados históricos abaixo não
+> foram recalculados e pertencem ao protocolo anterior.
+
 **Pesquisa Aplicada e Otimizações em Computação Gráfica (2026/2)**  
 **Curso de Bacharelado em Ciência da Computação – IFNMG Campus Montes Claros**  
 **Equipe:** Icaro Vinicius, Vinicius Macedo, Caio Dias  

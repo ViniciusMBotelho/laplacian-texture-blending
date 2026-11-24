@@ -345,6 +345,7 @@ export const TerrainShader = {
         texRes: { value: 1024.0 },
         lodDerivScale: { value: 1.0 },
         anisotropicLod: { value: 1.0 },
+        baseFilter: { value: 1 },
         maxAniso: { value: 8.0 },
         maxLod: { value: 4.5 },
         nearLimit: { value: 0.25 },
@@ -394,6 +395,7 @@ export const TerrainShader = {
         uniform float texRes;
         uniform float lodDerivScale;
         uniform float anisotropicLod;
+        uniform int baseFilter;
         uniform float maxAniso;
         uniform float maxLod;
         uniform float nearLimit;
@@ -430,7 +432,7 @@ export const TerrainShader = {
         };
 
         vec4 sampleAtLevel(sampler2D tex, vec2 uv, vec2 dPdx, vec2 dPdy, float k, float lambdaEff) {
-            if (k < 0.5 && anisotropicLod > 0.5) {
+            if (k < 0.5 && baseFilter == 1) {
                 return textureGrad(tex, uv, dPdx, dPdy);
             }
             return textureLod(tex, uv, max(lambdaEff, k));
@@ -758,6 +760,9 @@ export const TerrainShader = {
 
             float lambdaIso = max(0.0, log2(max(rhoMax, 1e-6)));
             float lambdaAniso = max(0.0, log2(max(max(rhoMin, rhoMax / maxAniso), 1e-6)));
+            // Sampling footprint is held fixed in the ablation. The selector
+            // changes only regime weights, never the mip levels being sampled.
+            float lambdaSampling = lambdaAniso;
             float lambdaEff = mix(lambdaIso, lambdaAniso, anisotropicLod);
             float distFactor = clamp(lambdaEff / max(maxLod, 0.5), 0.0, 1.0);
 
@@ -784,7 +789,7 @@ export const TerrainShader = {
                 uv,
                 dPdx,
                 dPdy,
-                lambdaEff,
+                lambdaSampling,
                 distFactor,
                 nLim,
                 fLim,
