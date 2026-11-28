@@ -1,0 +1,139 @@
+% =============================================================================
+% TEMPLATE DE ARTIGO - PROJETO DE PESQUISA EM COMPUTAÇÃO GRÁFICA
+% Bacharelado em Ciência da Computação - IFNMG - Campus Montes Claros
+% Disciplina: Computação Gráfica - 2026/2
+% Professor: Wagner Ferreira de Barros
+%
+% Formato didático inspirado em características recorrentes de conferências de
+% Computação Gráfica (p.ex., ACM SIGGRAPH/SIGGRAPH Asia e Eurographics):
+% texto compacto, duas colunas, corpo em 9 pt, pequeno espaçamento vertical e
+% figuras/tabelas integradas ao fluxo.
+%
+% IMPORTANTE: este é o modelo oficial DA DISCIPLINA, não o template oficial de
+% um evento específico. Para futura submissão, migre o conteúdo para o template
+% oficial do evento escolhido e siga integralmente as regras daquela chamada.
+%
+% Extensão exigida na disciplina: 8 a 12 páginas, incluindo referências.
+% =============================================================================
+
+\documentclass[9pt,a4paper,twocolumn]{extarticle}
+
+% -----------------------------------------------------------------------------
+% Codificação, idioma e tipografia
+% -----------------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazilian]{babel}
+\IfFileExists{newtxtext.sty}{%
+  \usepackage{newtxtext,newtxmath}%
+}{%
+  \usepackage{mathptmx}%
+}
+\usepackage{microtype}
+
+% -----------------------------------------------------------------------------
+% Página e colunas
+% Área útil próxima aos padrões compactos usados em publicações de CG.
+% -----------------------------------------------------------------------------
+\usepackage[a4paper,textwidth=177mm,textheight=245mm,centering]{geometry}
+\setlength{\columnsep}{8mm}
+\setlength{\columnseprule}{0pt}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0pt}
+\linespread{0.97}
+\widowpenalty=10000
+\clubpenalty=10000
+\pagestyle{empty}
+
+% -----------------------------------------------------------------------------
+% Seções compactas
+% -----------------------------------------------------------------------------
+\usepackage{titlesec}
+\titleformat{\section}
+  {\normalfont\bfseries\fontsize{10.5}{11.5}\selectfont}
+  {\thesection}{0.5em}{}
+\titleformat{\subsection}
+  {\normalfont\bfseries\fontsize{9.5}{10.5}\selectfont}
+  {\thesubsection}{0.45em}{}
+\titlespacing*{\section}{0pt}{7pt plus 2pt minus 1pt}{3pt}
+\titlespacing*{\subsection}{0pt}{5pt plus 1pt minus 1pt}{2pt}
+
+% -----------------------------------------------------------------------------
+% Figuras, tabelas, matemática e listas
+% -----------------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{subcaption}
+\usepackage{balance}
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.25em,itemsep=0pt,topsep=2pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.5em,itemsep=0pt,topsep=2pt,parsep=0pt}
+
+% -----------------------------------------------------------------------------
+% Legendas compactas
+% -----------------------------------------------------------------------------
+\usepackage[font=small,labelfont=bf]{caption}
+\captionsetup{skip=3pt}
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+
+% -----------------------------------------------------------------------------
+% Referências e links (Compatibilidade com natbib/bibtex e biblatex)
+% -----------------------------------------------------------------------------
+\usepackage[round,authoryear]{natbib}
+\bibliographystyle{plainnat}
+\providecommand{\parencite}[1]{\citep{#1}}
+\providecommand{\textcite}[1]{\citet{#1}}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+% -----------------------------------------------------------------------------
+% Código-fonte
+% -----------------------------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{listings}
+\definecolor{codegray}{gray}{0.45}
+\definecolor{codegreen}{rgb}{0.0,0.40,0.0}
+\definecolor{codeblue}{rgb}{0.10,0.20,0.65}
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{codeblue}\bfseries,
+  commentstyle=\color{codegreen},
+  numberstyle=\tiny\color{codegray},
+  numbers=left,
+  numbersep=4pt,
+  frame=single,
+  aboveskip=4pt,
+  belowskip=4pt,
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible
+}
+
+% -----------------------------------------------------------------------------
+% Orientações didáticas
+% Troque para \mostrarorientacoesfalse antes da entrega final.
+% -----------------------------------------------------------------------------
+\newif\ifmostrarorientacoes
+\mostrarorientacoesfalse
+
+\newcommand{\orientacao}[1]{%
+  \ifmostrarorientacoes
+    \par\smallskip
+    \noindent\fcolorbox{black!35}{black!4}{%
+      \parbox{0.94\columnwidth}{\fontsize{7.4}{8.2}\selectfont\textbf{Orientação aos autores:} #1}%
+    }%
+    \par\smallskip
+  \fi
+}
+
+% =============================================================================
+% DOCUMENTO
+% =============================================================================
+
+\input{conteudo.tex}

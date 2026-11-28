@@ -1,0 +1,15 @@
+{
+  "name": "laplacian-texture-blending-validation",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test --test-reporter=spec tests/*.test.js",
+    "test:watch": "node --test --watch tests/*.test.js",
+    "test:gpu": "node --test --test-reporter=spec tests/gpu/validation.test.js",
+    "test:gpu:resolutions": "node --test --test-reporter=spec tests/gpu/resolutions.test.js",
+    "benchmark:smoke": "node src/run_validation.mjs --smoke --sessions 1",
+    "benchmark:gpu": "node src/run_validation.mjs --sessions 5"
+  },
+  "dependencies": { "three": "0.149.0" }
+}
