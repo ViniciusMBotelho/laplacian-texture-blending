@@ -4,7 +4,7 @@
 {\sffamily\bfseries\fontsize{14}{16}\selectfont
 Mesclagem Laplaciana de Texturas em GPU:\\Avaliação de Salto de Níveis e Seleção Adaptativa sob Anisotropia\par}
 \vspace{5pt}
-{\fontsize{9.5}{11}\selectfont Ícaro Vinícius Carvalho Davi \quad Vinicius Macedo Colares Botelho \quad Caio Veloso Dias\par}
+{\fontsize{9.5}{11}\selectfont Ícaro Vinícius Carvalho Davi \quad Vinícius Macedo Colares Botelho \quad Caio Veloso Dias\par}
 \vspace{2pt}
 {\fontsize{8.5}{10}\selectfont Instituto Federal do Norte de Minas Gerais -- IFNMG, Campus Montes Claros\par
 \texttt{\{ivcd, vmcb, cvd\}@aluno.ifnmg.edu.br}\par}
@@ -191,7 +191,7 @@ result = w.full*full + w.skip*skip + w.lin*lin;
 \end{lstlisting}
 
 \subsection{Representação dos materiais}
-A implementação usa Python/NumPy/Pillow/SciPy para o caminho offline e WebGL 2.0/GLSL ES 3.00 com Three.js 0.149.0 para o caminho de GPU. O terreno tem $400\times400$ unidades, uma grade de $256\times256$ segmentos e repetição de textura equivalente a blocos de 10 unidades. A altura combina funções senoidais determinísticas, e as normais geométricas são obtidas de suas derivadas analíticas. As quatro câmeras fixam enquadramentos panorâmico, rasante, próximo e aéreo, todos com campo de visão de $50^\circ$.
+A implementação usa Python/NumPy/Pillow/SciPy para o caminho offline e WebGL 2.0/GLSL ES 3.00 com Three.js 0.149.0 para o caminho de GPU. O terreno tem $400\times400$ unidades, uma grade de $256\times256$ segmentos e repetição de textura equivalente a blocos de 10 unidades. A altura combina funções senoidais determinísticas, e as normais geométricas são obtidas de suas derivadas analíticas. As quatro câmeras fixam enquadramentos panorâmico, rasante, próximo e aéreo, todos com campo de visão de $50^\circ$. Para inspeção interativa, a aplicação WebGL inclui ainda câmera orbital, navegação em terceira pessoa com avatar sobre o terreno e modos de depuração visual (mapa de calor de regimes, LOD projetado, razão de anisotropia e comparação em tela dividida), desativados durante as coletas de desempenho.
 
 No modo albedo, cada nível requer duas cores e uma máscara. Em PBR de duas camadas, cada textura de normais armazena rugosidade no canal alfa, elevando a contagem a cinco amostras por nível. A rugosidade é uma função determinística da luma do albedo, não uma medição independente do material. O modo de três camadas acrescenta cor, normal/rugosidade e segunda máscara, totalizando oito amostras por nível. A terceira camada é derivada de ativos existentes; ela avalia complexidade do pipeline, não diversidade independente de dados.
 
@@ -379,7 +379,7 @@ A Figura~\ref{fig:crops} concentra a inspeção onde a discrepância adaptativa 
 
 \section{Discussão}
 \subsection{Resposta às questões de pesquisa}
-A primeira hipótese é sustentada no conjunto avaliado: o salto par fica mais próximo da reconstrução de seis bandas que o truncamento 3, sob a mesma contagem lógica. Sua diferença de PSNR na GPU PBR 2 é 19,76 dB na panorâmica e 18,20 dB na rasante. Além disso, o salto apresenta menor tempo médio que o truncamento nessas configurações. Como a contagem de amostras é igual, a diferença de tempo não pode ser explicada apenas pela quantidade de chamadas; a distribuição dos níveis e o caminho de execução também importam.
+A primeira hipótese é sustentada no conjunto avaliado: o salto par fica mais próximo da reconstrução de seis bandas que o truncamento 3, sob a mesma contagem lógica. Sua diferença de PSNR na GPU PBR 2 é 19,77 dB na panorâmica e 18,19 dB na rasante. Além disso, o salto apresenta menor tempo médio que o truncamento nessas configurações. Como a contagem de amostras é igual, a diferença de tempo não pode ser explicada apenas pela quantidade de chamadas; a distribuição dos níveis e o caminho de execução também importam.
 
 O resultado do híbrido precisa ser interpretado com cautela. Preservar a primeira banda não compensa automaticamente a ausência do residual 6. Seu PSNR próximo do truncamento até 5 sugere que a diferença de suporte macroscópico domina parte da discrepância. Uma comparação futura deve incluir $\{0,\,1,\,3,\,6\}$ ou $\{0,\,1,\,3,\,5,\,6\}$ para separar esses efeitos, explicitando os respectivos custos. Este estudo não testa essas novas sequências e não presume seu desempenho.
 
